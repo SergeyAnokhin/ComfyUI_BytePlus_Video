@@ -27,7 +27,7 @@ class BytePlusVideoGen:
                     "seedance-1-0-pro-fast-251015"
                 ], {"default": "seedance-1-0-lite-i2v-250428"}),
                 "resolution": (["480p", "720p", "1080p"], {"default": "720p"}),
-                "ratio": (["adaptive", "16:9", "4:3", "1:1", "3:4", "9:16", "21:9"], {"default": "adaptive"}),
+                "ratio": (["none", "adaptive", "16:9", "4:3", "1:1", "3:4", "9:16", "21:9"], {"default": "none"}),
                 "duration": ("INT", {"default": 5, "min": 2, "max": 12, "step": 1}),
                 "camera_fixed": ("BOOLEAN", {"default": False}),
                 "generate_audio": ("BOOLEAN", {"default": False}),
@@ -96,13 +96,16 @@ class BytePlusVideoGen:
         payload = {
             "model": model_id,
             "resolution": resolution,
-            "ratio": ratio,
             "duration": duration,
             "camera_fixed": camera_fixed,
             "generate_audio": generate_audio,
             "watermark": watermark,
             "content": content_items
         }
+
+        # Добавляем ratio только если оно не "none"
+        if ratio != "none":
+            payload["ratio"] = ratio
 
         # --- ЛОГИРОВАНИЕ ПАРАМЕТРОВ ЗАПРОСА (ОБРЕЗКА BASE64) ---
         debug_payload = copy.deepcopy(payload)
@@ -130,6 +133,23 @@ class BytePlusVideoGen:
                 print(f"✅ [BytePlus] Генерация завершена за {elapsed}с")
                 video_url = res.content.video_url
                 print(f"🔗 Ссылка на видео (URL): {video_url}")
+                
+                # --- ЛОГИРОВАНИЕ ПОЛНОГО ОТВЕТА МОДЕЛИ ---
+                print(f"\n📊 [BytePlus] ПОЛНЫЙ ОТВЕТ МОДЕЛИ:")
+                try:
+                    import json
+                    # Пытаемся вывести в красивом JSON формате
+                    if hasattr(res, 'model_dump'):
+                        print(json.dumps(res.model_dump(), indent=2, ensure_ascii=False))
+                    elif hasattr(res, 'dict'):
+                        print(json.dumps(res.dict(), indent=2, ensure_ascii=False))
+                    else:
+                        print(str(res))
+                except Exception:
+                    print(str(res))
+                print("-" * 40 + "\n")
+                # ----------------------------------------
+                
                 break
             elif res.status == "failed":
                 raise Exception(f"❌ Ошибка BytePlus API: {res.error}")

@@ -1,0 +1,5 @@
+byteplus-python-sdk-v2
+httpx
+pydantic
+sniffio
+Pillow

@@ -42,8 +42,8 @@ class BytePlusVideoGen:
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING") 
-    RETURN_NAMES = ("full_filepath", "video_url")
+    RETURN_TYPES = ("STRING", "STRING", "STRING") 
+    RETURN_NAMES = ("filename", "full_filepath", "video_url")
     OUTPUT_NODE = True 
     FUNCTION = "generate_and_download"
     CATEGORY = "BytePlus/Video"
@@ -172,4 +172,30 @@ class BytePlusVideoGen:
         print(f"💾 Файл успешно записан на диск: {full_path}")
 
         # Возвращаем 1: Полный путь к файлу, 2: URL
-        return {"ui": {"videos": [{"filename": file_name, "type": "output"}]}, "result": (full_path, video_url)}
+        # СЕКРЕТНЫЙ ТРЮК: Меняем "videos" на "gifs", чтобы ComfyUI автоматически 
+        # включил встроенный плеер прямо внутри нашей ноды! 🍿
+        return {"ui": {"videos": [{"filename": file_name, "type": "output"}]}, "result": (file_name, full_path, video_url)}
+    
+
+class URLVideoPlayer:
+    """
+    Простая нода, которая берет STRING (URL или путь) 
+    и передает его в интерфейс для воспроизведения.
+    """
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "video_url": ("STRING", {"forceInput": True}), # Принудительно ждем провод STRING
+            }
+        }
+
+    RETURN_TYPES = () # Ничего не выводим дальше
+    OUTPUT_NODE = True # Сообщаем ComfyUI, что это финальная нода (чтобы запускался процесс)
+    FUNCTION = "play_video"
+    CATEGORY = "BytePlus/Video"
+
+    def play_video(self, video_url):
+        print(f"📺 [Player] Получена ссылка для плеера: {video_url}")
+        # Отправляем ссылку нашему JavaScript файлу
+        return {"ui": {"b_video_urls": [video_url]}}    

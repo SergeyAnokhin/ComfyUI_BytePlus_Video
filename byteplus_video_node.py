@@ -20,10 +20,18 @@ class BytePlusVideoGen:
                 "image": ("IMAGE",), 
                 "prompt": ("STRING", {"multiline": True, "default": "A cinematic video..."}),
                 "api_key": ("STRING", {"default": "YOUR_API_KEY_HERE"}),
-                "model_id": (["seedance-1-5-pro-251215", "seedance-1-0-pro-fast-251015"],),
-                "resolution": (["720p", "1080p"], {"default": "720p"}),
-                "duration": ([5, 10], {"default": 5}),
-                "filename_prefix": ("STRING", {"default": "BytePlus_Video"}),
+                "model_id": ([
+                    "seedance-1-0-lite-i2v-250428", # Самая дешевая для тестов 📉
+                    "seedance-1-5-pro-251215", 
+                    "seedance-1-0-pro-fast-251015"
+                ], {"default": "seedance-1-0-lite-i2v-250428"}),
+                "resolution": (["480p", "720p", "1080p"], {"default": "720p"}),
+                "ratio": (["adaptive", "16:9", "4:3", "1:1", "3:4", "9:16", "21:9"], {"default": "adaptive"}),
+                "duration": ([5, 10, 12], {"default": 5}),
+                "seed": ("INT", {"default": -1, "min": -1, "max": 0xffffffffffffffff}), # -1 для рандома 🎲
+                "camera_fixed": ("BOOLEAN", {"default": False}),
+                "generate_audio": ("BOOLEAN", {"default": False}),
+                "watermark": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -40,65 +48,58 @@ class BytePlusVideoGen:
         img.save(buffered, format="PNG")
         return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
 
-    def generate_and_download(self, image, prompt, api_key, model_id, resolution, duration, filename_prefix):
+    def generate_and_download(self, image, prompt, api_key, model_id, resolution, ratio, duration, seed, camera_fixed, generate_audio, watermark):
         client = Ark(base_url="https://ark.ap-southeast.bytepluses.com/api/v3", api_key=api_key)
         base64_img = self.tensor_to_base64(image)
 
-        print(f"🎬 [BytePlus] Отправка запроса на генерацию...")
-        create_result = client.content_generation.tasks.create(
-            model=model_id,
-            resolution=resolution,
-            duration=duration,
-            content=[
+        # Обработка сида
+        actual_seed = int(time.time()) if seed == -1 else seed
+
+        print(f"🎬 [BytePlus] Запуск {model_id} (Seed: {actual_seed})...")
+        
+        # Сбор параметров для запроса
+        payload = {
+            "model": model_id,
+            "resolution": resolution,
+            "ratio": ratio,
+            "duration": duration,
+            "seed": actual_seed,
+            "camera_fixed": camera_fixed,
+            "generate_audio": generate_audio,
+            "watermark": watermark,
+            "content": [
                 {"type": "text", "text": prompt},
                 {"type": "image_url", "image_url": {"url": base64_img}}
             ]
-        )
+        }
 
+        create_result = client.content_generation.tasks.create(**payload)
         task_id = create_result.id
-        video_url = None
-        start_time = time.time() # Фиксируем время старта для таймера ⏱️
+        start_time = time.time()
 
-        # 🔄 Цикл ожидания с улучшенным логированием
         while True:
             res = client.content_generation.tasks.get(task_id=task_id)
-            elapsed = int(time.time() - start_time) # Считаем секунды
+            elapsed = int(time.time() - start_time)
             
             if res.status == "succeeded":
-                print(f"✅ [BytePlus] Готово! Время выполнения: {elapsed}с")
-                
-                # Достаем ссылку из правильного места, которое мы нашли в дебаге
-                try:
-                    if hasattr(res, 'content') and res.content:
-                        video_url = res.content.video_url
-                        print(f"🔗 Ссылка найдена: {video_url[:50]}...")
-                    else:
-                        print(f"❌ Поле 'content' отсутствует. Доступные поля: {list(res.__dict__.keys())}")
-                        raise AttributeError("URL видео не найден в объекте content")
-                except Exception as e:
-                    print(f"⚠️ Ошибка при извлечении URL: {e}")
-                    raise e
+                print(f"✅ Готово за {elapsed}с")
+                # Используем путь, который мы нашли через дебаг 🔍
+                video_url = res.content.video_url
                 break
-                
             elif res.status == "failed":
-                raise Exception(f"❌ Ошибка BytePlus: {res.error}")
+                raise Exception(f"❌ Ошибка API: {res.error}")
             
-            # Меняющееся сообщение с таймером ⏳
-            print(f"⏳ Генерируем... {elapsed}с | Статус: {res.status}")
-            time.sleep(4)
+            print(f"⏳ Генерируем ({model_id})... {elapsed}с")
+            time.sleep(5)
 
-        # 📥 Скачивание
-        print(f"📥 [BytePlus] Загрузка файла...")
-        file_name = f"{filename_prefix}_{int(time.time())}.mp4"
+        # Скачивание файла 📥
+        file_name = f"BytePlus_{int(time.time())}.mp4"
         full_path = os.path.join(self.output_dir, file_name)
-
-        response = requests.get(video_url, stream=True)
-        if response.status_code == 200:
+        
+        with requests.get(video_url, stream=True) as r:
+            r.raise_for_status()
             with open(full_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=1024*1024): # Чанки по 1МБ
+                for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
-            print(f"🚀 Видео успешно сохранено в: {full_path}")
-        else:
-            raise Exception(f"Ошибка скачивания: статус {response.status_code}")
 
         return {"ui": {"videos": [{"filename": file_name, "type": "output"}]}, "result": (file_name,)}

@@ -3,3 +3,5 @@ httpx
 pydantic
 sniffio
 Pillow
+numpy
+requests

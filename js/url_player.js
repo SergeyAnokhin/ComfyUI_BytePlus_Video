@@ -8,9 +8,10 @@ app.registerExtension({
             
             nodeType.prototype.onExecuted = function (message) {
                 onExecuted?.apply(this, arguments);
-                
-                if (message?.b_video_urls) {
-                    let url = message.b_video_urls[0];
+
+                const urls = message?.b_video_urls ?? message?.ui?.b_video_urls;
+                if (urls) {
+                    let url = urls[0];
                     
                     // 🪄 МАГИЯ ЗДЕСЬ: Проверяем, это веб-ссылка или локальный файл
                     if (!url.startsWith("http")) {

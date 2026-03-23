@@ -9,6 +9,7 @@ from PIL import Image
 from io import BytesIO
 from byteplussdkarkruntime import Ark
 import folder_paths 
+import comfy.utils
 
 class BytePlusVideoGen:
     def __init__(self):
@@ -124,12 +125,16 @@ class BytePlusVideoGen:
         task_id = create_result.id
         start_time = time.time()
 
+        pbar = comfy.utils.ProgressBar(100)
+        current_progress = 0
+
         # 5. Ожидание результата
         while True:
             res = client.content_generation.tasks.get(task_id=task_id)
             elapsed = int(time.time() - start_time)
             
             if res.status == "succeeded":
+                pbar.update_absolute(100, 100)                
                 print(f"✅ [BytePlus] Генерация завершена за {elapsed}с")
                 video_url = res.content.video_url
                 print(f"🔗 Ссылка на видео (URL): {video_url}")
@@ -154,6 +159,10 @@ class BytePlusVideoGen:
             elif res.status == "failed":
                 raise Exception(f"❌ Ошибка BytePlus API: {res.error}")
             
+            if current_progress < 95:
+                current_progress += 5
+            pbar.update_absolute(current_progress, 100)
+
             print(f"⏳ Ожидание ({model_id})... {elapsed}с | Статус: {res.status}")
             time.sleep(5)
 

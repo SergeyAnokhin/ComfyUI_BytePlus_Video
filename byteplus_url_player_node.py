@@ -10,7 +10,7 @@ class URLVideoPlayer:
     RETURN_TYPES = ()
     OUTPUT_NODE = True
     FUNCTION = "play_video"
-    CATEGORY = "BytePlus/Tools"
+    CATEGORY = "BytePlusVideo/Tools"
 
     def play_video(self, video_url):
         print(f"[Player] Received URL for player: {video_url}")

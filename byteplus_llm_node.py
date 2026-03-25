@@ -155,13 +155,15 @@ class BytePlusLLMChat:
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.1}),
                 "max_tokens": ("INT", {"default": 1024, "min": 1, "max": 32768, "step": 1}),
                 "structured_output_mode": (["none", "json_object", "json_schema"], {"default": "none"}),
-                "json_schema_name": ("STRING", {"default": "structured_response"}),
-                "json_schema_strict": ("BOOLEAN", {"default": True}),
+                "json_schema_name": ("STRING", {"default": "structured_response", "advanced": True, "tooltip": "Name for the structured output (used if structured_output_mode is 'json_schema')"}),
+                "json_schema_strict": ("BOOLEAN", {"default": True, "advanced": True, "tooltip": "Strict schema adherence"}),
                 "json_schema": (
                     "STRING",
                     {
                         "multiline": True,
                         "default": '{\n  "type": "object",\n  "properties": {\n    "summary": {"type": "string"},\n    "items": {\n      "type": "array",\n      "items": {"type": "string"}\n    }\n  },\n  "required": ["summary", "items"],\n  "additionalProperties": false\n}',
+                        "advanced": True,
+                        "tooltip": "JSON Schema for structured response (used if structured_output_mode is 'json_schema')",
                     },
                 ),
             }
@@ -179,7 +181,7 @@ class BytePlusLLMChat:
     )
     OUTPUT_NODE = True
     FUNCTION = "run_llm"
-    CATEGORY = "BytePlus/Text"
+    CATEGORY = "BytePlusVideo/Text"
 
     def run_llm(
         self,
